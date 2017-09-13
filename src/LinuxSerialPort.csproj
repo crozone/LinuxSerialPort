@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <RootNamespace>crozone.LinuxSerialPort</RootNamespace>
+    <AssemblyName>crozone.LinuxSerialPort</AssemblyName>
+    <Description>A managed Linux Serial Port implementation targeting netstandard2.0</Description>
+    <Authors>Ryan Crosby</Authors>
+  </PropertyGroup>
+  
+</Project>
