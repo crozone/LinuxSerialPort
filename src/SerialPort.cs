@@ -13,6 +13,8 @@ namespace crozone.LinuxSerialPort
     /// </summary>
     public class SerialPort : IDisposable
     {
+        public const int InfiniteTimeout = 0;
+
         private const string SttyPath = "/bin/stty";
 
         private string basePortPath;
