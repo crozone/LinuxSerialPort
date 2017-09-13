@@ -17,18 +17,18 @@ namespace crozone.LinuxSerialPort
 
         private const string SttyPath = "/bin/stty";
 
-        private string basePortPath;
-        private string port;
-        private bool isDisposed;
+        private string basePortPath = null;
+        private string port = null;
+        private bool isDisposed = false;
         private FileStream internalStream = null;
 
-        private bool? enableRawMode;
+        private bool? enableRawMode = null;
         private int? minimumBytesToRead = null;
-        private int? readTimeout;
+        private int? readTimeout = null;
         private int? baudRate = null;
         private int? dataBits = null;
         private StopBits? stopBits = null;
-        private Handshake? handshake;
+        private Handshake? handshake = null;
         private Parity? parity = null;
 
         /// <summary>
