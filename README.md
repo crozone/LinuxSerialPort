@@ -1,5 +1,10 @@
 # LinuxSerialPort
+
+[![NuGet](https://img.shields.io/badge/nuget-1.0.0-green.svg)](https://www.nuget.org/packages/crozone.LinuxSerialPort/)
+[![license](https://img.shields.io/github/license/mashape/apistatus.svg?maxAge=2592000)]()
+
 A managed Linux Serial Port implementation targeting netstandard2.0.
+Works on systems that have a POSIX compatible /bin/stty binary.
 
 ## About
 
