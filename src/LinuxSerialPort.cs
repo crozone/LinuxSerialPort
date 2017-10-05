@@ -11,7 +11,7 @@ namespace crozone.LinuxSerialPort
     /// <summary>
     /// A serial port implementation for POSIX style systems that have /bin/stty available.
     /// </summary>
-    public class SerialPort : IDisposable
+    public class LinuxSerialPort : IDisposable
     {
         public const int InfiniteTimeout = 0;
 
@@ -38,7 +38,7 @@ namespace crozone.LinuxSerialPort
         /// The path of the serial port device, for example /dev/ttyUSB0.
         /// Wildcards are accepted, for example /dev/ttyUSB* will open the first port that matches that path.
         /// </param>
-        public SerialPort(string port)
+        public LinuxSerialPort(string port)
         {
             basePortPath = port ?? throw new ArgumentNullException(nameof(port));
             this.port = basePortPath;
@@ -310,7 +310,7 @@ namespace crozone.LinuxSerialPort
 
         private void ThrowIfDisposed()
         {
-            if (isDisposed) throw new ObjectDisposedException(nameof(SerialPort));
+            if (isDisposed) throw new ObjectDisposedException(nameof(LinuxSerialPort));
         }
 
         /// <summary>
