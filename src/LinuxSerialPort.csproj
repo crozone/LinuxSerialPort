@@ -2,10 +2,21 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <Title>LinuxSerialPort</Title>
     <RootNamespace>crozone.LinuxSerialPort</RootNamespace>
     <AssemblyName>crozone.LinuxSerialPort</AssemblyName>
     <Description>A managed Linux Serial Port implementation targeting netstandard2.0</Description>
     <Authors>Ryan Crosby</Authors>
+    <PackageId>crozone.LinuxSerialPort</PackageId>
+    <VersionPrefix>1.0.0</VersionPrefix>
+    <Copyright>Copyright © Ryan Crosby 2017</Copyright>
+    <PackageTags>A Linux serial port implementation for NetStandard 2.0</PackageTags>
+    <PackageProjectUrl>https://github.com/crozone/LinuxSerialPort</PackageProjectUrl>
+    <PackageLicenseUrl>https://opensource.org/licenses/MIT</PackageLicenseUrl>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <RepositoryUrl>https://github.com/crozone/LinuxSerialPort</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReleaseNotes>Initial Release</PackageReleaseNotes>
   </PropertyGroup>
   
 </Project>
