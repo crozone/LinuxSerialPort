@@ -52,7 +52,7 @@ namespace crozone.LinuxSerialPort
 
         // Backing fields for the public serial port properties
         //
-        private bool? enableRawMode = null;
+        private bool enableRawMode;
         private int? minimumBytesToRead = null;
         private int? readTimeout = null;
         private int? baudRate = null;
@@ -67,13 +67,20 @@ namespace crozone.LinuxSerialPort
 
         /// <summary>
         /// Creates an instance of SerialPort for accessing a serial port on the system.
+        /// Enables the serial port in raw mode by default.
         /// </summary>
-        /// <param name="port">
-        /// The path of the serial port device, for example /dev/ttyUSB0.
+        /// <param name="port">The path of the serial port device, for example /dev/ttyUSB0.
         /// Wildcards are accepted, for example /dev/ttyUSB* will open the first port that matches that path.
         /// </param>
         public LinuxSerialPort(string port)
         {
+            // Check that stty is actually available on this platform before continuing.
+            //
+            if (!IsPlatformCompatible())
+            {
+                throw new PlatformNotSupportedException("This serial implementation only works on platforms with stty");
+            }
+
             // Set the original port path to whatever value was passed in.
             //
             originalPortPath = port ?? throw new ArgumentNullException(nameof(port));
@@ -83,12 +90,9 @@ namespace crozone.LinuxSerialPort
             //
             this.portPath = originalPortPath;
 
-            // Check that stty is actually available on this platform before continuing.
+            // Default to raw mode, as this will be the most common use case
             //
-            if (!IsPlatformCompatible())
-            {
-                throw new PlatformNotSupportedException("This serial implementation only works on platforms with stty");
-            }
+            enableRawMode = true;
 
             isDisposed = false;
         }
@@ -126,14 +130,14 @@ namespace crozone.LinuxSerialPort
                 return internalStream;
             }
         }
-     
+
         /// <summary>
         /// Disables as much of the kernel tty layer as possible,
         /// to provide raw serialport like behaviour over the underlying tty.
         /// </summary>
         public bool EnableRawMode {
             get {
-                return enableRawMode ?? false;
+                return enableRawMode;
             }
             set {
                 if (IsOpen)
@@ -157,7 +161,7 @@ namespace crozone.LinuxSerialPort
                 }
             }
         }
-        
+
         /// <summary>
         /// The minimum bytes that must fill the serial read buffer before the Read command
         /// will return. (However, it may still time out and return less than this).
@@ -481,10 +485,7 @@ namespace crozone.LinuxSerialPort
             // these have been set.
             //
 
-            if (enableRawMode.HasValue)
-            {
-                allParams = allParams.Concat(GetRawModeTtyParam(enableRawMode.Value));
-            }
+            allParams = allParams.Concat(GetRawModeTtyParam(enableRawMode));
 
             if (baudRate.HasValue)
             {
