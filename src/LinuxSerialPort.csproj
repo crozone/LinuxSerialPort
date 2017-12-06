@@ -16,6 +16,15 @@
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <RepositoryUrl>https://github.com/crozone/LinuxSerialPort</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageReleaseNotes>Raw mode is now enabled by default.</PackageReleaseNotes>
+    <PackageReleaseNotes>Raw mode is now enabled by default. Include XML documentation in package.</PackageReleaseNotes>
   </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DocumentationFile>bin\Debug\netstandard2.0\crozone.LinuxSerialPort.xml</DocumentationFile>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <DocumentationFile>bin\Release\netstandard2.0\crozone.LinuxSerialPort.xml</DocumentationFile>
+  </PropertyGroup>
+
 </Project>
