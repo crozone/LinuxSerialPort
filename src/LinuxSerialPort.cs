@@ -81,13 +81,16 @@ namespace crozone.LinuxSerialPort
                 if (IsOpen)
                 {
                     // Set the raw mode
+                    //
                     SetTtyOnSerial(GetRawModeTtyParam(value));
 
                     // Only set the backing field after the raw mode was set successfully.
+                    //
                     enableRawMode = value;
 
                     // Since this command is composite and sets multiple parameters,
                     // we must re-commit all other settings back over the top of it once set.
+                    //
                     SetAllSerialParams();
                 }
                 else
@@ -212,25 +215,29 @@ namespace crozone.LinuxSerialPort
         {
             ThrowIfDisposed();
 
-            // resolve the actual port, since the path given may be a wildcard
-
-            // get the first file that matches the given path and search
+            // Resolve the actual port, since the path given may be a wildcard.
+            //
+            // Do this by getting all the files that match the given path and search string,
+            // order by descending, and get the first path. This will get the first port.
+            //
             string portPath = Directory.EnumerateFiles(
                 Path.GetDirectoryName(basePortPath),
                 Path.GetFileName(basePortPath)
                 )
-                .OrderBy(p => p) // choose the lowest serial port first
+                .OrderBy(p => p)
                 .FirstOrDefault();
 
             this.port = portPath ?? throw new FileNotFoundException($"No ports match the path {basePortPath}");
 
-            // instead of using the linux kernel API to configure the serial port,
-            // use stty from the shell.
-
-            // open the serial port stream
+            // Instead of using the linux kernel API to configure the serial port,
+            // call stty from the shell.
+            //
+            // Open the serial port file as a filestream
+            //
             internalStream = File.Open(port, FileMode.Open);
 
-            // set all settings that were configured before the port was opened.
+            // Set all settings that were configured before the port was opened
+            //
             SetAllSerialParams();
         }
 
@@ -256,6 +263,11 @@ namespace crozone.LinuxSerialPort
             isDisposed = true;
         }
 
+        /// <summary>
+        /// Discards the contents of the serial port read buffer.
+        /// Note, the current implementation only reads all bytes from the buffer,
+        /// which is less than ideal.
+        /// </summary>
         public void DiscardInBuffer()
         {
             ThrowIfDisposed();
@@ -265,6 +277,14 @@ namespace crozone.LinuxSerialPort
             while (internalStream.Read(buffer, 0, buffer.Length) > 0) ;
         }
 
+        /// <summary>
+        /// Discards the contents of the serial port read buffer.
+        /// Note, the current implementation only reads all bytes from the buffer,
+        /// which is less than ideal. This will cause problems if MinimumBytesToRead
+        /// is not set to 0.
+        /// </summary>
+        /// <param name="token"></param>
+        /// <returns></returns>
         public async Task DiscardInBufferAsync(CancellationToken token)
         {
             ThrowIfDisposed();
@@ -274,6 +294,12 @@ namespace crozone.LinuxSerialPort
             while (await internalStream.ReadAsync(buffer, 0, buffer.Length, token) > 0) ;
         }
 
+        /// <summary>
+        /// Discards the contents of the serial port write buffer.
+        /// Note, the current implementation only flushes the stream,
+        /// which is less than ideal. This will cause problems if hardware flow control
+        /// is enabled.
+        /// </summary>
         public void DiscardOutBuffer()
         {
             ThrowIfDisposed();
@@ -282,6 +308,14 @@ namespace crozone.LinuxSerialPort
             internalStream.Flush();
         }
 
+        /// <summary>
+        /// Discards the contents of the serial port write buffer.
+        /// Note, the current implementation only flushes the stream,
+        /// which is less than ideal. This will cause problems if hardware flow control
+        /// is enabled.
+        /// </summary>
+        /// <param name="token"></param>
+        /// <returns></returns>
         public async Task DiscardOutBufferAsync(CancellationToken token)
         {
             ThrowIfDisposed();
@@ -327,11 +361,14 @@ namespace crozone.LinuxSerialPort
         /// <returns></returns>
         private string SetTtyOnSerial(IEnumerable<string> sttyArguments)
         {
-            // append the serial port file argument to the list of provided arguments
+            // Append the serial port file argument to the list of provided arguments
             // to make the stty command target the active serial port
+            //
             var arguments = GetPortTtyParam(port).Concat(sttyArguments);
-            // call stty with params
-            return SetTtyWithParam(arguments); ;
+
+            // Call stty with the parameters given
+            //
+            return SetTtyWithParam(arguments);
         }
 
         /// <summary>
@@ -341,8 +378,17 @@ namespace crozone.LinuxSerialPort
         /// <returns></returns>
         private string SetTtyWithParam(IEnumerable<string> arguments)
         {
+            // Concatinate all the argument strings into a single value that
+            // can be passed to the stty executable
+            //
             string argumentsString = string.Join(" ", arguments);
+
+            // Call the stty executable with the stringle argument string
+            //
             string result = CallStty(argumentsString);
+
+            // Return the result produced by stty
+            //
             return result;
         }
 
@@ -353,27 +399,54 @@ namespace crozone.LinuxSerialPort
         /// <returns></returns>
         private static string CallStty(string sttyParams)
         {
+            // Create the new process to run the the stty executable
+            //
             Process process = new Process();
             process.StartInfo.FileName = SttyPath;
+
+            // Don't shell execute, we want to run the executable directly
+            //
             process.StartInfo.UseShellExecute = false;
+
+            // Redirect stdout and stderr so we can capture it
+            //
             process.StartInfo.RedirectStandardOutput = true;
             process.StartInfo.RedirectStandardError = true;
+
+            // Set the arguments to the given stty parameters
+            //
             process.StartInfo.Arguments = sttyParams;
+
+            // Start the stty process
+            //
             process.Start();
+
             // Always call ReadToEnd() before WaitForExit() to avoid a deadlock
+            //
+            // Read the entirety of stdout and stderr and wait for the streams to close
             Task<string> readOutput = process.StandardOutput.ReadToEndAsync();
             Task<string> readError = process.StandardError.ReadToEndAsync();
             Task.WaitAll(readOutput, readError);
             string outputString = readOutput.Result;
             string errorString = readError.Result;
+
+            // Now that the stdout and stderr streams have closed,
+            // wait for the process to exit.
+            //
             process.WaitForExit();
 
-            // if there was any error printed, throw it
+            // If stty produced anything on stderr, it means that stty had trouble setting the values
+            // that were passed to it.
+            //
+            // If stderr was not empty, throw it as an exception
+            //
             if (errorString.Trim().Length > 0)
             {
                 throw new InvalidOperationException(errorString);
             }
 
+            // Return the stdout of stty
+            //
             return outputString;
         }
 
@@ -392,8 +465,17 @@ namespace crozone.LinuxSerialPort
         {
             IEnumerable<string> allParams = Enumerable.Empty<string>();
 
-            // start with sane to reset any previous commands
+            // Start with sane to reset any previous commands
+            //
             allParams = allParams.Concat(GetSaneModeTtyParam());
+
+            //
+            // When properties are set for the first time, their backing value transitions
+            // from null to the requested value.
+            //
+            // Return parameters for all property backing values that aren't null, since
+            // these have been set.
+            //
 
             if (enableRawMode.HasValue)
             {
@@ -450,10 +532,14 @@ namespace crozone.LinuxSerialPort
 
         private IEnumerable<string> GetSaneModeTtyParam()
         {
-            // sets cread -ignbrk brkint -inlcr -igncr icrnl -iutf8 -ixoff -iuclc -ixany imaxbel opost
+            // sane is a composite command that sets:
+            //
+            // cread -ignbrk brkint -inlcr -igncr icrnl -iutf8 -ixoff -iuclc -ixany imaxbel opost
             // -olcuc -ocrnl onlcr -onocr -onlret -ofill -ofdel nl0 cr0 tab0 bs0 vt0 ff0 isig icanon iexten
             // echo echoe echok -echonl -noflsh -xcase -tostop -echoprt echoctl echoke
-            // and all special characters to their default values
+            //
+            // as well as "special characters" to their default values
+            //
             yield return "sane";
         }
 
@@ -461,21 +547,58 @@ namespace crozone.LinuxSerialPort
         {
             if (rawEnabled)
             {
-                // sets -ignbrk -brkint -ignpar -parmrk -inpck -istrip -inlcr -igncr -icrnl -ixon -ixoff
+                // raw is a composite command that sets:
+                //
+                // -ignbrk -brkint -ignpar -parmrk -inpck -istrip -inlcr -igncr -icrnl -ixon -ixoff
                 // -iuclc -ixany -imaxbel -opost -isig -icanon -xcase min 1 time 0
+                //
                 yield return "raw";
 
-                // remove echo and other things that will get in the way of reading raw data how we expect
-                yield return "-hupcl"; // don't send a hangup signal when the last process closes the tty
-                yield return "-clocal"; // disable modem control signals
-                yield return "-iexten"; // don't enable non-POSIX special characters
-                yield return "-echo"; // don't echo erase characters as backspace-space-backspace
-                yield return "-echoe"; // don't echo erase characters as backspace-space-backspace
-                yield return "-echok"; // don't echo a newline after a kill characters
-                yield return "-echonl"; // don't echo newline even if not echoing other characters
-                yield return "-echoprt"; // don't echo erased characters backward, between '\' and '/'
-                yield return "-echoctl"; // don't echo control characters in hat notation ('^c')
-                yield return "-echoke"; // kill all line by obeying the echoctl and echok settings
+                // Unfortunately, the raw parameter on its own doesn't set enough parameters to
+                // actually get the tty to anywhere near a true byte in, byte out raw serial socket.
+                //
+                // Remove echo and other things that will get in the way of reading raw data how we expect.
+                //
+
+                // Don't send a hangup signal when the last process closes the tty
+                //
+                yield return "-hupcl";
+
+                // Disable modem control signals
+                //
+                yield return "-clocal";
+
+                // Don't enable non-POSIX special characters
+                //
+                yield return "-iexten";
+
+                // Don't echo erase characters as backspace-space-backspace
+                //
+                yield return "-echo";
+
+                // Don't echo erase characters as backspace-space-backspace
+                //
+                yield return "-echoe";
+
+                // Don't echo a newline after a kill characters
+                //
+                yield return "-echok";
+
+                // Don't echo newline even if not echoing other characters
+                //
+                yield return "-echonl";
+
+                // Don't echo erased characters backward, between '\' and '/'
+                //
+                yield return "-echoprt";
+
+                // Don't echo control characters in hat notation ('^c')
+                //
+                yield return "-echoctl";
+
+                // Kill all line by obeying the echoctl and echok settings
+                //
+                yield return "-echoke";
             }
             else
             {
