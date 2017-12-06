@@ -8,7 +8,7 @@
     <Description>A managed Linux Serial Port implementation targeting netstandard 2.0. Uses /bin/stty to avoid needing native code compilation and interop.</Description>
     <Authors>Ryan Crosby</Authors>
     <PackageId>crozone.LinuxSerialPort</PackageId>
-    <VersionPrefix>1.1.0</VersionPrefix>
+    <Version>1.1.1</Version>
     <Copyright>Copyright © Ryan Crosby 2017</Copyright>
     <PackageTags>Linux serial port stty managed NetStandard 2.0</PackageTags>
     <PackageProjectUrl>https://github.com/crozone/LinuxSerialPort</PackageProjectUrl>
@@ -16,6 +16,15 @@
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <RepositoryUrl>https://github.com/crozone/LinuxSerialPort</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageReleaseNotes>Raw mode is now enabled by default.</PackageReleaseNotes>
+    <PackageReleaseNotes>Raw mode is now enabled by default. Include XML documentation in package.</PackageReleaseNotes>
   </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DocumentationFile>bin\Debug\netstandard2.0\crozone.LinuxSerialPort.xml</DocumentationFile>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <DocumentationFile>bin\Release\netstandard2.0\crozone.LinuxSerialPort.xml</DocumentationFile>
+  </PropertyGroup>
+
 </Project>
