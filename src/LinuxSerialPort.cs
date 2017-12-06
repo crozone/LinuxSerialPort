@@ -14,13 +14,44 @@ namespace crozone.LinuxSerialPort
     /// </summary>
     public class LinuxSerialPort : IDisposable
     {
+        //
+        // Constants
+        //
+
         public const int InfiniteTimeout = 0;
 
-        private string basePortPath = null;
-        private string port = null;
+
+        //
+        // Private fields
+        //
+
+        // The original port path is the path passed into the constructor
+        // when the serial port is created. This value may contain wildcards,
+        // and never changes.
+        //
+        private string originalPortPath = null;
+
+        // The port path is the current path of the port.
+        // This will usually be equal to originalPortPath, but may change
+        // when the port is opened, as any wildcards in the originalPortPath
+        // will be resolved to an actual file, and portPath will be set to the
+        // actual path of the file opened.
+        //
+        private string portPath = null;
+
+        // Set to true when the port is disposed.
+        // After the port is disposed, it cannot be reopened.
+        //
         private bool isDisposed = false;
+
+        // When the port is opened, this gets set to the filestream of the
+        // serial port file, and remains until the port is closed or disposed.
+        //
         private FileStream internalStream = null;
 
+
+        // Backing fields for the public serial port properties
+        //
         private bool? enableRawMode = null;
         private int? minimumBytesToRead = null;
         private int? readTimeout = null;
@@ -29,6 +60,10 @@ namespace crozone.LinuxSerialPort
         private StopBits? stopBits = null;
         private Handshake? handshake = null;
         private Parity? parity = null;
+
+        //
+        // Constructors
+        //
 
         /// <summary>
         /// Creates an instance of SerialPort for accessing a serial port on the system.
@@ -39,26 +74,50 @@ namespace crozone.LinuxSerialPort
         /// </param>
         public LinuxSerialPort(string port)
         {
-            basePortPath = port ?? throw new ArgumentNullException(nameof(port));
-            this.port = basePortPath;
-            if (!IsPlatformCompatible()) throw new PlatformNotSupportedException("This serial implementation only works on platforms with stty");
+            // Set the original port path to whatever value was passed in.
+            //
+            originalPortPath = port ?? throw new ArgumentNullException(nameof(port));
+
+            // Also set port path to the original port path.
+            // this port path may be changed when the port is actually opened.
+            //
+            this.portPath = originalPortPath;
+
+            // Check that stty is actually available on this platform before continuing.
+            //
+            if (!IsPlatformCompatible())
+            {
+                throw new PlatformNotSupportedException("This serial implementation only works on platforms with stty");
+            }
 
             isDisposed = false;
         }
 
-        #region Properties
+        //
+        // Public Properties
+        //
+
+        /// <summary>
+        /// True if the serialport has been opened, and the stream is avialable for reading and writing.
+        /// </summary>
         public bool IsOpen {
             get {
                 return internalStream != null;
             }
         }
 
+        /// <summary>
+        /// The path of the opened port.
+        /// </summary>
         public string PortName {
             get {
-                return port;
+                return portPath;
             }
         }
 
+        /// <summary>
+        /// The stream for reading from and writing to the serial port.
+        /// </summary>
         public Stream BaseStream {
             get {
                 ThrowIfDisposed();
@@ -133,6 +192,9 @@ namespace crozone.LinuxSerialPort
             }
         }
 
+        /// <summary>
+        /// Gets or sets the baud rate of the serial port.
+        /// </summary>
         public int BaudRate {
             get {
                 return baudRate ?? -1;
@@ -147,6 +209,9 @@ namespace crozone.LinuxSerialPort
             }
         }
 
+        /// <summary>
+        /// Gets or sets the databits to use for the serial port.
+        /// </summary>
         public int DataBits {
             get {
                 return dataBits ?? 8;
@@ -161,6 +226,9 @@ namespace crozone.LinuxSerialPort
             }
         }
 
+        /// <summary>
+        /// Gets or sets the stopbits to use for the serial port.
+        /// </summary>
         public StopBits StopBits {
             get {
                 return stopBits ?? StopBits.One;
@@ -175,6 +243,9 @@ namespace crozone.LinuxSerialPort
             }
         }
 
+        /// <summary>
+        /// Gets or sets the handshake method to use for the serial port.
+        /// </summary>
         public Handshake Handshake {
             get {
                 return handshake ?? Handshake.None;
@@ -188,6 +259,9 @@ namespace crozone.LinuxSerialPort
             }
         }
 
+        /// <summary>
+        /// Gets or sets the parity to use for the serial port.
+        /// </summary>
         public Parity Parity {
             get {
                 return parity ?? Parity.None;
@@ -201,9 +275,9 @@ namespace crozone.LinuxSerialPort
             }
         }
 
-        #endregion
-
-        #region Public Methods
+        //
+        // Public Methods
+        //
 
         /// <summary>
         /// Opens the serial port.
@@ -220,20 +294,20 @@ namespace crozone.LinuxSerialPort
             // order by descending, and get the first path. This will get the first port.
             //
             string portPath = Directory.EnumerateFiles(
-                Path.GetDirectoryName(basePortPath),
-                Path.GetFileName(basePortPath)
+                Path.GetDirectoryName(originalPortPath),
+                Path.GetFileName(originalPortPath)
                 )
                 .OrderBy(p => p)
                 .FirstOrDefault();
 
-            this.port = portPath ?? throw new FileNotFoundException($"No ports match the path {basePortPath}");
+            this.portPath = portPath ?? throw new FileNotFoundException($"No ports match the path {originalPortPath}");
 
             // Instead of using the linux kernel API to configure the serial port,
             // call stty from the shell.
             //
             // Open the serial port file as a filestream
             //
-            internalStream = File.Open(port, FileMode.Open);
+            internalStream = File.Open(this.portPath, FileMode.Open);
 
             // Set all settings that were configured before the port was opened
             //
@@ -332,15 +406,22 @@ namespace crozone.LinuxSerialPort
             return PortName;
         }
 
-        #endregion
 
-        #region Private Methods
+        //
+        // Private methods
+        //
 
+        /// <summary>
+        /// Throw an InvalidOperationException if the port is not open.
+        /// </summary>
         private void ThrowIfNotOpen()
         {
             if (!IsOpen) throw new InvalidOperationException("Port is not open");
         }
 
+        /// <summary>
+        /// Throw an ObjectDisposedException if the port is disposed.
+        /// </summary>
         private void ThrowIfDisposed()
         {
             if (isDisposed) throw new ObjectDisposedException(nameof(LinuxSerialPort));
@@ -356,24 +437,34 @@ namespace crozone.LinuxSerialPort
             // Append the serial port file argument to the list of provided arguments
             // to make the stty command target the active serial port
             //
-            var arguments = GetPortTtyParam(port).Concat(sttyArguments);
+            var arguments = GetPortTtyParam(portPath).Concat(sttyArguments);
 
             // Call stty with the parameters given
             //
             return SetTtyWithParam(arguments);
         }
 
-        #region stty Commands
+        /// <summary>
+        /// Sets serial "sane".
+        /// </summary>
         private void SetSerialSane()
         {
             SetTtyOnSerial(GetSaneModeTtyParam());
         }
 
+        /// <summary>
+        /// Sets the stty parameters for all currently set properties on the serial port.
+        /// </summary>
+        /// <returns></returns>
         private void SetAllSerialParams()
         {
             SetTtyOnSerial(GetAllTtyParams());
         }
 
+        /// <summary>
+        /// Gets the stty parameters for all currently set properties on the serial port.
+        /// </summary>
+        /// <returns></returns>
         private IEnumerable<string> GetAllTtyParams()
         {
             IEnumerable<string> allParams = Enumerable.Empty<string>();
@@ -432,8 +523,5 @@ namespace crozone.LinuxSerialPort
 
             return allParams;
         }
-
-        #endregion
-        #endregion
     }
 }
