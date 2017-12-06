@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using static crozone.LinuxSerialPort.Helpers.SttyParameters;
+using static crozone.LinuxSerialPort.Helpers.SttyExecution;
 
 namespace crozone.LinuxSerialPort
 {
@@ -14,8 +15,6 @@ namespace crozone.LinuxSerialPort
     public class LinuxSerialPort : IDisposable
     {
         public const int InfiniteTimeout = 0;
-
-        private const string SttyPath = "/bin/stty";
 
         private string basePortPath = null;
         private string port = null;
@@ -335,13 +334,6 @@ namespace crozone.LinuxSerialPort
 
         #endregion
 
-        #region Public Static Methods
-        public static bool IsPlatformCompatible()
-        {
-            return File.Exists(SttyPath);
-        }
-        #endregion
-
         #region Private Methods
 
         private void ThrowIfNotOpen()
@@ -369,85 +361,6 @@ namespace crozone.LinuxSerialPort
             // Call stty with the parameters given
             //
             return SetTtyWithParam(arguments);
-        }
-
-        /// <summary>
-        /// Calls stty with the list of stty arguments
-        /// </summary>
-        /// <param name="arguments"></param>
-        /// <returns></returns>
-        private string SetTtyWithParam(IEnumerable<string> arguments)
-        {
-            // Concatinate all the argument strings into a single value that
-            // can be passed to the stty executable
-            //
-            string argumentsString = string.Join(" ", arguments);
-
-            // Call the stty executable with the stringle argument string
-            //
-            string result = CallStty(argumentsString);
-
-            // Return the result produced by stty
-            //
-            return result;
-        }
-
-        /// <summary>
-        /// Calls the stty command with the parameters given.
-        /// </summary>
-        /// <param name="sttyParams"></param>
-        /// <returns></returns>
-        private static string CallStty(string sttyParams)
-        {
-            // Create the new process to run the the stty executable
-            //
-            Process process = new Process();
-            process.StartInfo.FileName = SttyPath;
-
-            // Don't shell execute, we want to run the executable directly
-            //
-            process.StartInfo.UseShellExecute = false;
-
-            // Redirect stdout and stderr so we can capture it
-            //
-            process.StartInfo.RedirectStandardOutput = true;
-            process.StartInfo.RedirectStandardError = true;
-
-            // Set the arguments to the given stty parameters
-            //
-            process.StartInfo.Arguments = sttyParams;
-
-            // Start the stty process
-            //
-            process.Start();
-
-            // Always call ReadToEnd() before WaitForExit() to avoid a deadlock
-            //
-            // Read the entirety of stdout and stderr and wait for the streams to close
-            Task<string> readOutput = process.StandardOutput.ReadToEndAsync();
-            Task<string> readError = process.StandardError.ReadToEndAsync();
-            Task.WaitAll(readOutput, readError);
-            string outputString = readOutput.Result;
-            string errorString = readError.Result;
-
-            // Now that the stdout and stderr streams have closed,
-            // wait for the process to exit.
-            //
-            process.WaitForExit();
-
-            // If stty produced anything on stderr, it means that stty had trouble setting the values
-            // that were passed to it.
-            //
-            // If stderr was not empty, throw it as an exception
-            //
-            if (errorString.Trim().Length > 0)
-            {
-                throw new InvalidOperationException(errorString);
-            }
-
-            // Return the stdout of stty
-            //
-            return outputString;
         }
 
         #region stty Commands
@@ -520,200 +433,6 @@ namespace crozone.LinuxSerialPort
             return allParams;
         }
 
-        private IEnumerable<string> GetListAllTtyParam()
-        {
-            yield return "-a";
-        }
-
-        private IEnumerable<string> GetPortTtyParam(string port)
-        {
-            yield return $"-F {port}";
-        }
-
-        private IEnumerable<string> GetSaneModeTtyParam()
-        {
-            // sane is a composite command that sets:
-            //
-            // cread -ignbrk brkint -inlcr -igncr icrnl -iutf8 -ixoff -iuclc -ixany imaxbel opost
-            // -olcuc -ocrnl onlcr -onocr -onlret -ofill -ofdel nl0 cr0 tab0 bs0 vt0 ff0 isig icanon iexten
-            // echo echoe echok -echonl -noflsh -xcase -tostop -echoprt echoctl echoke
-            //
-            // as well as "special characters" to their default values
-            //
-            yield return "sane";
-        }
-
-        private IEnumerable<string> GetRawModeTtyParam(bool rawEnabled)
-        {
-            if (rawEnabled)
-            {
-                // raw is a composite command that sets:
-                //
-                // -ignbrk -brkint -ignpar -parmrk -inpck -istrip -inlcr -igncr -icrnl -ixon -ixoff
-                // -iuclc -ixany -imaxbel -opost -isig -icanon -xcase min 1 time 0
-                //
-                yield return "raw";
-
-                // Unfortunately, the raw parameter on its own doesn't set enough parameters to
-                // actually get the tty to anywhere near a true byte in, byte out raw serial socket.
-                //
-                // Remove echo and other things that will get in the way of reading raw data how we expect.
-                //
-
-                // Don't send a hangup signal when the last process closes the tty
-                //
-                yield return "-hupcl";
-
-                // Disable modem control signals
-                //
-                yield return "-clocal";
-
-                // Don't enable non-POSIX special characters
-                //
-                yield return "-iexten";
-
-                // Don't echo erase characters as backspace-space-backspace
-                //
-                yield return "-echo";
-
-                // Don't echo erase characters as backspace-space-backspace
-                //
-                yield return "-echoe";
-
-                // Don't echo a newline after a kill characters
-                //
-                yield return "-echok";
-
-                // Don't echo newline even if not echoing other characters
-                //
-                yield return "-echonl";
-
-                // Don't echo erased characters backward, between '\' and '/'
-                //
-                yield return "-echoprt";
-
-                // Don't echo control characters in hat notation ('^c')
-                //
-                yield return "-echoctl";
-
-                // Kill all line by obeying the echoctl and echok settings
-                //
-                yield return "-echoke";
-            }
-            else
-            {
-                yield return "-raw";
-            }
-        }
-
-        private IEnumerable<string> GetBaudTtyParam(int baudRate)
-        {
-            yield return $"{baudRate}";
-        }
-
-        private IEnumerable<string> GetReadTimeoutTtyParam(int readTimeout)
-        {
-            yield return $"time {(readTimeout + 50) / 100}"; // timeout on each read. Time is in tenths of a second, 1 = 100ms.
-        }
-
-        private IEnumerable<string> GetMinDataTtyParam(int byteCount)
-        {
-            yield return $"min {byteCount}"; // minimum bytes that can be read out of the stream
-        }
-
-        private IEnumerable<string> GetHandshakeTtyParams(Handshake handshake)
-        {
-            switch (handshake)
-            {
-                case Handshake.None:
-                    yield return "-crtscts";
-                    yield return "-ixoff";
-                    yield return "-ixon";
-                    yield break;
-                case Handshake.RequestToSend:
-                    yield return "crtscts";
-                    yield return "-ixoff";
-                    yield return "-ixon";
-                    yield break;
-                case Handshake.XOnXOff:
-                    yield return "-crtscts";
-                    yield return "ixoff";
-                    yield return "ixon";
-                    yield break;
-                case Handshake.RequestToSendXOnXOff:
-                    yield return "crtscts";
-                    yield return "ixoff";
-                    yield return "ixon";
-                    yield break;
-                default:
-                    throw new InvalidOperationException($"Invalid Handshake {handshake}");
-            }
-        }
-
-        private IEnumerable<string> GetParityTtyParams(Parity parity)
-        {
-            switch (parity)
-            {
-                case Parity.None:
-                    yield return "-parenb";
-                    yield return "-cmspar";
-                    yield break;
-                case Parity.Odd:
-                    yield return "parenb";
-                    yield return "-cmspar";
-                    yield return "parodd";
-                    yield break;
-                case Parity.Even:
-                    yield return "parenb";
-                    yield return "-cmspar";
-                    yield return "-parodd";
-                    yield break;
-                case Parity.Mark:
-                    yield return "-parenb";
-                    yield return "cmspar";
-                    yield return "parodd";
-                    yield break;
-                case Parity.Space:
-                    yield return "-parenb";
-                    yield return "cmspar";
-                    yield return "-parodd";
-                    yield break;
-                default:
-                    throw new InvalidOperationException($"Invalid Parity {parity}");
-            }
-        }
-
-        private IEnumerable<string> GetDataBitsTtyParam(int dataBits)
-        {
-            if (dataBits < 5 || dataBits > 8)
-            {
-                throw new ArgumentOutOfRangeException(
-                    nameof(dataBits),
-                    $"{nameof(dataBits)} must be between 5 and 8"
-                 );
-            }
-
-            yield return $"cs{dataBits}";
-        }
-
-        private IEnumerable<string> GetStopBitsTtyParam(StopBits stopBits)
-        {
-            switch (stopBits)
-            {
-                case StopBits.None:
-                    throw new InvalidOperationException($"Stop bits cannot be set to {StopBits.None}");
-                case StopBits.One:
-                    yield return "-cstopb";
-                    yield break;
-                case StopBits.OnePointFive:
-                    throw new InvalidOperationException($"Stop bits cannot be set to {StopBits.OnePointFive}");
-                case StopBits.Two:
-                    yield return "cstopb";
-                    yield break;
-                default:
-                    throw new InvalidOperationException($"Invalid StopBits {stopBits}");
-            }
-        }
         #endregion
         #endregion
     }
