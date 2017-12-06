@@ -717,33 +717,4 @@ namespace crozone.LinuxSerialPort
         #endregion
         #endregion
     }
-
-    #region Enums
-
-    public enum Handshake
-    {
-        None,
-        XOnXOff,
-        RequestToSend,
-        RequestToSendXOnXOff
-    }
-
-    public enum Parity
-    {
-        None,
-        Odd,
-        Even,
-        Mark,
-        Space
-    }
-
-    public enum StopBits
-    {
-        None,
-        One,
-        Two,
-        OnePointFive
-    }
-
-    #endregion
 }
