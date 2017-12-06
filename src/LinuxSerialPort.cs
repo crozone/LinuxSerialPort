@@ -78,14 +78,21 @@ namespace crozone.LinuxSerialPort
                 return enableRawMode ?? false;
             }
             set {
-                enableRawMode = value;
                 if (IsOpen)
                 {
-                    //SetTty(GetRawModeTtyParam(value));
+                    // Set the raw mode
+                    SetTtyOnSerial(GetRawModeTtyParam(value));
 
-                    // because this command is composite and sets multiple parameters,
+                    // Only set the backing field after the raw mode was set successfully.
+                    enableRawMode = value;
+
+                    // Since this command is composite and sets multiple parameters,
                     // we must re-commit all other settings back over the top of it once set.
                     SetAllSerialParams();
+                }
+                else
+                {
+                    enableRawMode = value;
                 }
             }
         }
@@ -99,11 +106,11 @@ namespace crozone.LinuxSerialPort
                 return minimumBytesToRead ?? 0;
             }
             set {
-                minimumBytesToRead = value;
                 if (IsOpen)
                 {
                     SetTtyOnSerial(GetMinDataTtyParam(value));
                 }
+                minimumBytesToRead = value;
             }
         }
 
@@ -116,11 +123,11 @@ namespace crozone.LinuxSerialPort
                 return readTimeout ?? 0;
             }
             set {
-                readTimeout = value;
                 if (IsOpen)
                 {
                     SetTtyOnSerial(GetReadTimeoutTtyParam(value));
                 }
+                readTimeout = value;
             }
         }
 
@@ -130,11 +137,11 @@ namespace crozone.LinuxSerialPort
             }
 
             set {
-                baudRate = value;
                 if (IsOpen)
                 {
                     SetTtyOnSerial(GetBaudTtyParam(value));
                 }
+                baudRate = value;
             }
         }
 
@@ -144,11 +151,11 @@ namespace crozone.LinuxSerialPort
             }
 
             set {
-                dataBits = value;
                 if (IsOpen)
                 {
                     SetTtyOnSerial(GetDataBitsTtyParam(value));
                 }
+                dataBits = value;
             }
         }
 
@@ -158,11 +165,11 @@ namespace crozone.LinuxSerialPort
             }
 
             set {
-                stopBits = value;
                 if (IsOpen)
                 {
                     SetTtyOnSerial(GetStopBitsTtyParam(value));
                 }
+                stopBits = value;
             }
         }
 
@@ -171,11 +178,11 @@ namespace crozone.LinuxSerialPort
                 return handshake ?? Handshake.None;
             }
             set {
-                handshake = value;
                 if (IsOpen)
                 {
                     SetTtyOnSerial(GetHandshakeTtyParams(value).ToArray());
                 }
+                handshake = value;
             }
         }
 
@@ -184,11 +191,11 @@ namespace crozone.LinuxSerialPort
                 return parity ?? Parity.None;
             }
             set {
-                parity = value;
                 if (IsOpen)
                 {
                     SetTtyOnSerial(GetParityTtyParams(value).ToArray());
                 }
+                parity = value;
             }
         }
 
