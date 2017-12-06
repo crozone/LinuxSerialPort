@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using static crozone.LinuxSerialPort.Helpers.SttyParameters;
+using static crozone.LinuxSerialPort.Helpers.SttyExecution;
 
 namespace crozone.LinuxSerialPort
 {
@@ -13,15 +14,44 @@ namespace crozone.LinuxSerialPort
     /// </summary>
     public class LinuxSerialPort : IDisposable
     {
+        //
+        // Constants
+        //
+
         public const int InfiniteTimeout = 0;
 
-        private const string SttyPath = "/bin/stty";
 
-        private string basePortPath = null;
-        private string port = null;
+        //
+        // Private fields
+        //
+
+        // The original port path is the path passed into the constructor
+        // when the serial port is created. This value may contain wildcards,
+        // and never changes.
+        //
+        private string originalPortPath = null;
+
+        // The port path is the current path of the port.
+        // This will usually be equal to originalPortPath, but may change
+        // when the port is opened, as any wildcards in the originalPortPath
+        // will be resolved to an actual file, and portPath will be set to the
+        // actual path of the file opened.
+        //
+        private string portPath = null;
+
+        // Set to true when the port is disposed.
+        // After the port is disposed, it cannot be reopened.
+        //
         private bool isDisposed = false;
+
+        // When the port is opened, this gets set to the filestream of the
+        // serial port file, and remains until the port is closed or disposed.
+        //
         private FileStream internalStream = null;
 
+
+        // Backing fields for the public serial port properties
+        //
         private bool? enableRawMode = null;
         private int? minimumBytesToRead = null;
         private int? readTimeout = null;
@@ -30,6 +60,10 @@ namespace crozone.LinuxSerialPort
         private StopBits? stopBits = null;
         private Handshake? handshake = null;
         private Parity? parity = null;
+
+        //
+        // Constructors
+        //
 
         /// <summary>
         /// Creates an instance of SerialPort for accessing a serial port on the system.
@@ -40,26 +74,50 @@ namespace crozone.LinuxSerialPort
         /// </param>
         public LinuxSerialPort(string port)
         {
-            basePortPath = port ?? throw new ArgumentNullException(nameof(port));
-            this.port = basePortPath;
-            if (!IsPlatformCompatible()) throw new PlatformNotSupportedException("This serial implementation only works on platforms with stty");
+            // Set the original port path to whatever value was passed in.
+            //
+            originalPortPath = port ?? throw new ArgumentNullException(nameof(port));
+
+            // Also set port path to the original port path.
+            // this port path may be changed when the port is actually opened.
+            //
+            this.portPath = originalPortPath;
+
+            // Check that stty is actually available on this platform before continuing.
+            //
+            if (!IsPlatformCompatible())
+            {
+                throw new PlatformNotSupportedException("This serial implementation only works on platforms with stty");
+            }
 
             isDisposed = false;
         }
 
-        #region Properties
+        //
+        // Public Properties
+        //
+
+        /// <summary>
+        /// True if the serialport has been opened, and the stream is avialable for reading and writing.
+        /// </summary>
         public bool IsOpen {
             get {
                 return internalStream != null;
             }
         }
 
+        /// <summary>
+        /// The path of the opened port.
+        /// </summary>
         public string PortName {
             get {
-                return port;
+                return portPath;
             }
         }
 
+        /// <summary>
+        /// The stream for reading from and writing to the serial port.
+        /// </summary>
         public Stream BaseStream {
             get {
                 ThrowIfDisposed();
@@ -81,13 +139,16 @@ namespace crozone.LinuxSerialPort
                 if (IsOpen)
                 {
                     // Set the raw mode
+                    //
                     SetTtyOnSerial(GetRawModeTtyParam(value));
 
                     // Only set the backing field after the raw mode was set successfully.
+                    //
                     enableRawMode = value;
 
                     // Since this command is composite and sets multiple parameters,
                     // we must re-commit all other settings back over the top of it once set.
+                    //
                     SetAllSerialParams();
                 }
                 else
@@ -131,6 +192,9 @@ namespace crozone.LinuxSerialPort
             }
         }
 
+        /// <summary>
+        /// Gets or sets the baud rate of the serial port.
+        /// </summary>
         public int BaudRate {
             get {
                 return baudRate ?? -1;
@@ -145,6 +209,9 @@ namespace crozone.LinuxSerialPort
             }
         }
 
+        /// <summary>
+        /// Gets or sets the databits to use for the serial port.
+        /// </summary>
         public int DataBits {
             get {
                 return dataBits ?? 8;
@@ -159,6 +226,9 @@ namespace crozone.LinuxSerialPort
             }
         }
 
+        /// <summary>
+        /// Gets or sets the stopbits to use for the serial port.
+        /// </summary>
         public StopBits StopBits {
             get {
                 return stopBits ?? StopBits.One;
@@ -173,6 +243,9 @@ namespace crozone.LinuxSerialPort
             }
         }
 
+        /// <summary>
+        /// Gets or sets the handshake method to use for the serial port.
+        /// </summary>
         public Handshake Handshake {
             get {
                 return handshake ?? Handshake.None;
@@ -186,6 +259,9 @@ namespace crozone.LinuxSerialPort
             }
         }
 
+        /// <summary>
+        /// Gets or sets the parity to use for the serial port.
+        /// </summary>
         public Parity Parity {
             get {
                 return parity ?? Parity.None;
@@ -199,9 +275,9 @@ namespace crozone.LinuxSerialPort
             }
         }
 
-        #endregion
-
-        #region Public Methods
+        //
+        // Public Methods
+        //
 
         /// <summary>
         /// Opens the serial port.
@@ -212,25 +288,29 @@ namespace crozone.LinuxSerialPort
         {
             ThrowIfDisposed();
 
-            // resolve the actual port, since the path given may be a wildcard
-
-            // get the first file that matches the given path and search
+            // Resolve the actual port, since the path given may be a wildcard.
+            //
+            // Do this by getting all the files that match the given path and search string,
+            // order by descending, and get the first path. This will get the first port.
+            //
             string portPath = Directory.EnumerateFiles(
-                Path.GetDirectoryName(basePortPath),
-                Path.GetFileName(basePortPath)
+                Path.GetDirectoryName(originalPortPath),
+                Path.GetFileName(originalPortPath)
                 )
-                .OrderBy(p => p) // choose the lowest serial port first
+                .OrderBy(p => p)
                 .FirstOrDefault();
 
-            this.port = portPath ?? throw new FileNotFoundException($"No ports match the path {basePortPath}");
+            this.portPath = portPath ?? throw new FileNotFoundException($"No ports match the path {originalPortPath}");
 
-            // instead of using the linux kernel API to configure the serial port,
-            // use stty from the shell.
+            // Instead of using the linux kernel API to configure the serial port,
+            // call stty from the shell.
+            //
+            // Open the serial port file as a filestream
+            //
+            internalStream = File.Open(this.portPath, FileMode.Open);
 
-            // open the serial port stream
-            internalStream = File.Open(port, FileMode.Open);
-
-            // set all settings that were configured before the port was opened.
+            // Set all settings that were configured before the port was opened
+            //
             SetAllSerialParams();
         }
 
@@ -256,6 +336,11 @@ namespace crozone.LinuxSerialPort
             isDisposed = true;
         }
 
+        /// <summary>
+        /// Discards the contents of the serial port read buffer.
+        /// Note, the current implementation only reads all bytes from the buffer,
+        /// which is less than ideal.
+        /// </summary>
         public void DiscardInBuffer()
         {
             ThrowIfDisposed();
@@ -265,6 +350,14 @@ namespace crozone.LinuxSerialPort
             while (internalStream.Read(buffer, 0, buffer.Length) > 0) ;
         }
 
+        /// <summary>
+        /// Discards the contents of the serial port read buffer.
+        /// Note, the current implementation only reads all bytes from the buffer,
+        /// which is less than ideal. This will cause problems if MinimumBytesToRead
+        /// is not set to 0.
+        /// </summary>
+        /// <param name="token"></param>
+        /// <returns></returns>
         public async Task DiscardInBufferAsync(CancellationToken token)
         {
             ThrowIfDisposed();
@@ -274,6 +367,12 @@ namespace crozone.LinuxSerialPort
             while (await internalStream.ReadAsync(buffer, 0, buffer.Length, token) > 0) ;
         }
 
+        /// <summary>
+        /// Discards the contents of the serial port write buffer.
+        /// Note, the current implementation only flushes the stream,
+        /// which is less than ideal. This will cause problems if hardware flow control
+        /// is enabled.
+        /// </summary>
         public void DiscardOutBuffer()
         {
             ThrowIfDisposed();
@@ -282,6 +381,14 @@ namespace crozone.LinuxSerialPort
             internalStream.Flush();
         }
 
+        /// <summary>
+        /// Discards the contents of the serial port write buffer.
+        /// Note, the current implementation only flushes the stream,
+        /// which is less than ideal. This will cause problems if hardware flow control
+        /// is enabled.
+        /// </summary>
+        /// <param name="token"></param>
+        /// <returns></returns>
         public async Task DiscardOutBufferAsync(CancellationToken token)
         {
             ThrowIfDisposed();
@@ -299,22 +406,22 @@ namespace crozone.LinuxSerialPort
             return PortName;
         }
 
-        #endregion
 
-        #region Public Static Methods
-        public static bool IsPlatformCompatible()
-        {
-            return File.Exists(SttyPath);
-        }
-        #endregion
+        //
+        // Private methods
+        //
 
-        #region Private Methods
-
+        /// <summary>
+        /// Throw an InvalidOperationException if the port is not open.
+        /// </summary>
         private void ThrowIfNotOpen()
         {
             if (!IsOpen) throw new InvalidOperationException("Port is not open");
         }
 
+        /// <summary>
+        /// Throw an ObjectDisposedException if the port is disposed.
+        /// </summary>
         private void ThrowIfDisposed()
         {
             if (isDisposed) throw new ObjectDisposedException(nameof(LinuxSerialPort));
@@ -327,73 +434,52 @@ namespace crozone.LinuxSerialPort
         /// <returns></returns>
         private string SetTtyOnSerial(IEnumerable<string> sttyArguments)
         {
-            // append the serial port file argument to the list of provided arguments
+            // Append the serial port file argument to the list of provided arguments
             // to make the stty command target the active serial port
-            var arguments = GetPortTtyParam(port).Concat(sttyArguments);
-            // call stty with params
-            return SetTtyWithParam(arguments); ;
+            //
+            var arguments = GetPortTtyParam(portPath).Concat(sttyArguments);
+
+            // Call stty with the parameters given
+            //
+            return SetTtyWithParam(arguments);
         }
 
         /// <summary>
-        /// Calls stty with the list of stty arguments
+        /// Sets serial "sane".
         /// </summary>
-        /// <param name="arguments"></param>
-        /// <returns></returns>
-        private string SetTtyWithParam(IEnumerable<string> arguments)
-        {
-            string argumentsString = string.Join(" ", arguments);
-            string result = CallStty(argumentsString);
-            return result;
-        }
-
-        /// <summary>
-        /// Calls the stty command with the parameters given.
-        /// </summary>
-        /// <param name="sttyParams"></param>
-        /// <returns></returns>
-        private static string CallStty(string sttyParams)
-        {
-            Process process = new Process();
-            process.StartInfo.FileName = SttyPath;
-            process.StartInfo.UseShellExecute = false;
-            process.StartInfo.RedirectStandardOutput = true;
-            process.StartInfo.RedirectStandardError = true;
-            process.StartInfo.Arguments = sttyParams;
-            process.Start();
-            // Always call ReadToEnd() before WaitForExit() to avoid a deadlock
-            Task<string> readOutput = process.StandardOutput.ReadToEndAsync();
-            Task<string> readError = process.StandardError.ReadToEndAsync();
-            Task.WaitAll(readOutput, readError);
-            string outputString = readOutput.Result;
-            string errorString = readError.Result;
-            process.WaitForExit();
-
-            // if there was any error printed, throw it
-            if (errorString.Trim().Length > 0)
-            {
-                throw new InvalidOperationException(errorString);
-            }
-
-            return outputString;
-        }
-
-        #region stty Commands
         private void SetSerialSane()
         {
             SetTtyOnSerial(GetSaneModeTtyParam());
         }
 
+        /// <summary>
+        /// Sets the stty parameters for all currently set properties on the serial port.
+        /// </summary>
+        /// <returns></returns>
         private void SetAllSerialParams()
         {
             SetTtyOnSerial(GetAllTtyParams());
         }
 
+        /// <summary>
+        /// Gets the stty parameters for all currently set properties on the serial port.
+        /// </summary>
+        /// <returns></returns>
         private IEnumerable<string> GetAllTtyParams()
         {
             IEnumerable<string> allParams = Enumerable.Empty<string>();
 
-            // start with sane to reset any previous commands
+            // Start with sane to reset any previous commands
+            //
             allParams = allParams.Concat(GetSaneModeTtyParam());
+
+            //
+            // When properties are set for the first time, their backing value transitions
+            // from null to the requested value.
+            //
+            // Return parameters for all property backing values that aren't null, since
+            // these have been set.
+            //
 
             if (enableRawMode.HasValue)
             {
@@ -437,190 +523,5 @@ namespace crozone.LinuxSerialPort
 
             return allParams;
         }
-
-        private IEnumerable<string> GetListAllTtyParam()
-        {
-            yield return "-a";
-        }
-
-        private IEnumerable<string> GetPortTtyParam(string port)
-        {
-            yield return $"-F {port}";
-        }
-
-        private IEnumerable<string> GetSaneModeTtyParam()
-        {
-            // sets cread -ignbrk brkint -inlcr -igncr icrnl -iutf8 -ixoff -iuclc -ixany imaxbel opost
-            // -olcuc -ocrnl onlcr -onocr -onlret -ofill -ofdel nl0 cr0 tab0 bs0 vt0 ff0 isig icanon iexten
-            // echo echoe echok -echonl -noflsh -xcase -tostop -echoprt echoctl echoke
-            // and all special characters to their default values
-            yield return "sane";
-        }
-
-        private IEnumerable<string> GetRawModeTtyParam(bool rawEnabled)
-        {
-            if (rawEnabled)
-            {
-                // sets -ignbrk -brkint -ignpar -parmrk -inpck -istrip -inlcr -igncr -icrnl -ixon -ixoff
-                // -iuclc -ixany -imaxbel -opost -isig -icanon -xcase min 1 time 0
-                yield return "raw";
-
-                // remove echo and other things that will get in the way of reading raw data how we expect
-                yield return "-hupcl"; // don't send a hangup signal when the last process closes the tty
-                yield return "-clocal"; // disable modem control signals
-                yield return "-iexten"; // don't enable non-POSIX special characters
-                yield return "-echo"; // don't echo erase characters as backspace-space-backspace
-                yield return "-echoe"; // don't echo erase characters as backspace-space-backspace
-                yield return "-echok"; // don't echo a newline after a kill characters
-                yield return "-echonl"; // don't echo newline even if not echoing other characters
-                yield return "-echoprt"; // don't echo erased characters backward, between '\' and '/'
-                yield return "-echoctl"; // don't echo control characters in hat notation ('^c')
-                yield return "-echoke"; // kill all line by obeying the echoctl and echok settings
-            }
-            else
-            {
-                yield return "-raw";
-            }
-        }
-
-        private IEnumerable<string> GetBaudTtyParam(int baudRate)
-        {
-            yield return $"{baudRate}";
-        }
-
-        private IEnumerable<string> GetReadTimeoutTtyParam(int readTimeout)
-        {
-            yield return $"time {(readTimeout + 50) / 100}"; // timeout on each read. Time is in tenths of a second, 1 = 100ms.
-        }
-
-        private IEnumerable<string> GetMinDataTtyParam(int byteCount)
-        {
-            yield return $"min {byteCount}"; // minimum bytes that can be read out of the stream
-        }
-
-        private IEnumerable<string> GetHandshakeTtyParams(Handshake handshake)
-        {
-            switch (handshake)
-            {
-                case Handshake.None:
-                    yield return "-crtscts";
-                    yield return "-ixoff";
-                    yield return "-ixon";
-                    yield break;
-                case Handshake.RequestToSend:
-                    yield return "crtscts";
-                    yield return "-ixoff";
-                    yield return "-ixon";
-                    yield break;
-                case Handshake.XOnXOff:
-                    yield return "-crtscts";
-                    yield return "ixoff";
-                    yield return "ixon";
-                    yield break;
-                case Handshake.RequestToSendXOnXOff:
-                    yield return "crtscts";
-                    yield return "ixoff";
-                    yield return "ixon";
-                    yield break;
-                default:
-                    throw new InvalidOperationException($"Invalid Handshake {handshake}");
-            }
-        }
-
-        private IEnumerable<string> GetParityTtyParams(Parity parity)
-        {
-            switch (parity)
-            {
-                case Parity.None:
-                    yield return "-parenb";
-                    yield return "-cmspar";
-                    yield break;
-                case Parity.Odd:
-                    yield return "parenb";
-                    yield return "-cmspar";
-                    yield return "parodd";
-                    yield break;
-                case Parity.Even:
-                    yield return "parenb";
-                    yield return "-cmspar";
-                    yield return "-parodd";
-                    yield break;
-                case Parity.Mark:
-                    yield return "-parenb";
-                    yield return "cmspar";
-                    yield return "parodd";
-                    yield break;
-                case Parity.Space:
-                    yield return "-parenb";
-                    yield return "cmspar";
-                    yield return "-parodd";
-                    yield break;
-                default:
-                    throw new InvalidOperationException($"Invalid Parity {parity}");
-            }
-        }
-
-        private IEnumerable<string> GetDataBitsTtyParam(int dataBits)
-        {
-            if (dataBits < 5 || dataBits > 8)
-            {
-                throw new ArgumentOutOfRangeException(
-                    nameof(dataBits),
-                    $"{nameof(dataBits)} must be between 5 and 8"
-                 );
-            }
-
-            yield return $"cs{dataBits}";
-        }
-
-        private IEnumerable<string> GetStopBitsTtyParam(StopBits stopBits)
-        {
-            switch (stopBits)
-            {
-                case StopBits.None:
-                    throw new InvalidOperationException($"Stop bits cannot be set to {StopBits.None}");
-                case StopBits.One:
-                    yield return "-cstopb";
-                    yield break;
-                case StopBits.OnePointFive:
-                    throw new InvalidOperationException($"Stop bits cannot be set to {StopBits.OnePointFive}");
-                case StopBits.Two:
-                    yield return "cstopb";
-                    yield break;
-                default:
-                    throw new InvalidOperationException($"Invalid StopBits {stopBits}");
-            }
-        }
-        #endregion
-        #endregion
     }
-
-    #region Enums
-
-    public enum Handshake
-    {
-        None,
-        XOnXOff,
-        RequestToSend,
-        RequestToSendXOnXOff
-    }
-
-    public enum Parity
-    {
-        None,
-        Odd,
-        Even,
-        Mark,
-        Space
-    }
-
-    public enum StopBits
-    {
-        None,
-        One,
-        Two,
-        OnePointFive
-    }
-
-    #endregion
 }
