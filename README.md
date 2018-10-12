@@ -27,7 +27,7 @@ SerialPort.ReadTimeout corresponds to the stty time parameter. ReadTimeout speci
 The following example opens a serial port, and then enters an infinite send/receive loop.
 
 ```
-// Open the first serial port that matches /dev/USB* (eg, /dev/USB0).
+// Open the first serial port that matches /dev/ttyUSB* (eg, /dev/ttyUSB0).
 //
 using (LinuxSerialPort serialPort = new LinuxSerialPort("/dev/ttyUSB*")
 {
@@ -74,7 +74,7 @@ using (LinuxSerialPort serialPort = new LinuxSerialPort("/dev/ttyUSB*")
         string sendMessage = "Hello!";
         Console.WriteLine($"SEND: {sendMessage}");
         
-        byte[] writeBytes = Encoding.ASCII.GetBytes(sendMessage);
+        byte[] writeBytes = Encoding.UTF8.GetBytes(sendMessage);
         stream.Write(writeBytes, 0, writeBytes.Length);
         stream.Flush();
         
@@ -105,8 +105,17 @@ using (LinuxSerialPort serialPort = new LinuxSerialPort("/dev/ttyUSB*")
             
             // If we received no data during the Thread.Sleep, assume we have reached the end
             // of the packet being sent to us.
+            //
             if (bytesRead <= 0)
             {
+                break;
+            }
+            
+            // Check if we have run out of read buffer.
+            //
+            if(totalBytesRead >= readBuffer.Length) {
+                // Use what we have.
+                //
                 break;
             }
         }
