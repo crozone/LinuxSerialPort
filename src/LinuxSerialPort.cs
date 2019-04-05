@@ -34,14 +34,6 @@ namespace crozone.LinuxSerialPort
         //
         private readonly string originalPortPath = null;
 
-        // The port path is the current path of the port.
-        // This will usually be equal to originalPortPath, but may change
-        // when the port is opened, as any wildcards in the originalPortPath
-        // will be resolved to an actual file, and portPath will be set to the
-        // actual path of the file opened.
-        //
-        private string portPath = null;
-
         // Set to true when the port is disposed.
         // After the port is disposed, it cannot be reopened.
         //
@@ -91,7 +83,7 @@ namespace crozone.LinuxSerialPort
             // Also set port path to the original port path.
             // this port path may be changed when the port is actually opened.
             //
-            this.portPath = originalPortPath;
+            this.PortName = originalPortPath;
 
             // Default to raw mode, as this will be the most common use case
             //
@@ -116,11 +108,7 @@ namespace crozone.LinuxSerialPort
         /// <summary>
         /// The path of the opened port.
         /// </summary>
-        public string PortName {
-            get {
-                return portPath;
-            }
-        }
+        public string PortName { get; private set; } = null;
 
         /// <summary>
         /// The stream for reading from and writing to the serial port.
@@ -315,14 +303,14 @@ namespace crozone.LinuxSerialPort
                 .OrderBy(p => p)
                 .FirstOrDefault();
 
-            this.portPath = portPath ?? throw new FileNotFoundException($"No ports match the path {originalPortPath}");
+            this.PortName = portPath ?? throw new FileNotFoundException($"No ports match the path {originalPortPath}");
 
             // Instead of using the linux kernel API to configure the serial port,
             // call stty from the shell.
             //
             // Open the serial port file as a filestream
             //
-            internalStream = File.Open(this.portPath, FileMode.Open);
+            internalStream = File.Open(this.PortName, FileMode.Open);
 
             // Set all settings that were configured before the port was opened
             //
@@ -452,7 +440,7 @@ namespace crozone.LinuxSerialPort
             // Append the serial port file argument to the list of provided arguments
             // to make the stty command target the active serial port
             //
-            var arguments = GetPortTtyParam(portPath).Concat(sttyArguments);
+            var arguments = GetPortTtyParam(PortName).Concat(sttyArguments);
 
             // Call stty with the parameters given
             //
