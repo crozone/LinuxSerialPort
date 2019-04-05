@@ -12,7 +12,9 @@ This SerialPort class is intended to offer similar functionality to the SerialPo
 
 Most basic functionality is covered, including the configuration of the BaudRate, DataBits, StopBits, Handshake, and Parity.
 
-Notably, the `Read()` and `Write()` methods are absent from the SerialPort class itself (as an aside, these are problematic in the Microsoft implementation anyway). Instead, the BaseStream property provides the underlying Stream used to read and write from the serial port.
+## Properties
+
+The `SerialPort.BaseStream` property provides the underlying Stream used to read and write from the serial port. It is a direct filestream opened on the serial port file. The `SerialPort.Read()` and `SerialPort.Write()` methods are absent from the SerialPort class itself (as an aside, these are problematic in the Microsoft implementation anyway). The `SerialPort.DataReceived` event is also absent (and it is also unreliable in the Microsoft implementation, and difficult to implement correctly).
 
 `SerialPort.EnableRawMode` must be set to true in order to disable Linux TTY behaviour, and since v1.1.0 is set to true by default. This will be the desired behaviour for most people and allow the reading/writing of raw bytes to the serial port without the interference of the kernel TTY layer.
 
@@ -21,6 +23,10 @@ Notably, the `Read()` and `Write()` methods are absent from the SerialPort class
 `SerialPort.MinimumBytesToRead` corresponds to the stty min parameter. MinimumBytesToRead specifies the minimum number of bytes to be read before `BaseStream.Read()` will return. `BaseStream.Read()` will only return after `MinimumBytesToRead` bytes have been read, or the read has timed out. Setting `MinimumBytesToRead` to 0 will cause `BaseStream.Read()` to never block, and instantly return whatever bytes are available in the buffer, even if the buffer is empty.
 
 `SerialPort.ReadTimeout` corresponds to the stty time parameter. `ReadTimeout` specifies the number of milliseconds a `BaseStream.Read()` will block for, before it times out. After it times out, it will return whatever data has been read, which may be zero bytes. Due to stty constraints, the time-span will be rounded to the nearest tenth of a second. A ReadTimeout of 0 specifies an infinite timeout. When an infinite timeout is set, the `BaseStream.Read()` will only return after `MinimumBytesToRead` bytes have been read.
+
+`SerialPort.EnableDrain` controls the use of the stty [-]drain setting. When drain is enabled, stty will attempt to flush the serial port write buffer before applying any configuration to the serial port.
+This is problematic if the serial port happens to have data in the write buffer and flow control enabled, since it may never flush, causing stty to hang indefinitely.
+Therefore, if [-]drain is available in your version of stty, it is always recommended to set `SerialPort.EnableDrain = false`. [-]drain is not a POSIX compatible command, and older/different versions of stty may not have it available, so be sure to check before setting this. All versions of stty use drain enabled behaviour by default, including the stty versions that to not have the option available.
 
 ## Example Code
 
@@ -34,6 +40,12 @@ using (LinuxSerialPort serialPort = new LinuxSerialPort("/dev/ttyUSB*")
     //
     // Set serial port parameters
     //
+
+    // Set drain to false so that stty doesn't attempt to flush the write buffer when configuring the port,
+    // avoiding a potential hang when flow control is enabled.
+    // Set this to null (or remove this line) if your stty version doesn't support the [-]drain option.
+    //
+    EnableDrain = false,
 
     // Set the minimum bytes required to trigger a read to 0.
     // This means that the read will never block indefinitely, even if no data arrives.
@@ -131,23 +143,23 @@ using (LinuxSerialPort serialPort = new LinuxSerialPort("/dev/ttyUSB*")
     }
     
     //
-    // Serial port is automatically closed here, when Dispose() is called by the using statement.
+    // Serial port is automatically closed here when Dispose() is called by the using statement.
     //
 }
 ```
 
 ## Implementation
 
-The implementation works by opening a FileStream to a serial port TTY device, and then setting the serial port TTY parameters with stty. Usually the TTY device is represented as a file within the /dev directory on a Unix system. For example, /dev/ttyUSB0 is a common path for USB serial adaptors.
+The implementation works by opening a FileStream to a serial port TTY device, and then setting the serial port TTY parameters with stty. Usually the TTY device is represented as a file within the /dev/ directory on a Unix system. For example, /dev/ttyUSB0 is a common path for USB serial adaptors, and /dev/serial0 is common for physical serial ports.
 
-Once the serial port stream has been opened, it is provided by the `SerialPort.BaseStream` property.
+Once the serial port stream has been opened, read and write capabilities are provided by the `SerialPort.BaseStream` property. This property is a direct filestream to the serial port device.
 
 Unlike the mono implementation of SerialPort, there is no native component for calling into the various kernel serial port APIs. Instead, the /bin/stty binary is called directly with the appropriate parameters to set up the serial device. This is a portable solution that works across the majority of Unix systems.
 
 This implementation will not change parameters of the serial port device unless the property for that setting has been set. However, some TTY behaviour is set when the serial port is opened. Specifically, with `EnableRawMode = true` (default), the TTY is set to "sane" and then "raw", and several other options are set in an attempt to disable as much of the kernel TTY layer as possible.
 
-Other stty parameters will not be changed unless the respective properties have been set. For example, the values for Baudrate, DataBits, StopBits, Handshake, and Parity should remain unchanged when the serial port is opened, and will be set to the serial driver's preexisting configuraiton.
+Other stty parameters will not be changed unless the respective properties have been set. For example, the values for Baudrate, DataBits, StopBits, Handshake, and Parity will remain unchanged when the serial port is first opened, unless  the corresponding properties were set before the port was opened, or set after the port was opened.
 
 ## Contributing
 
-There are still quite a few things missing from this implementation that can be implemented using stty, and would be nice to have. Feel free to chuck me a pull request as your heart desires!
+There are still quite a few things missing from this implementation that can be implemented using stty, and would be nice to have. Feel free to chuck me a pull request if you have a useful feature idea.
