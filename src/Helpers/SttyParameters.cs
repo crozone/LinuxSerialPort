@@ -91,6 +91,18 @@ namespace crozone.LinuxSerialPort.Helpers
             }
         }
 
+        public static IEnumerable<string> GetDrainTtyParam(bool drainEnabled)
+        {
+            if (drainEnabled)
+            {
+                yield return "drain";
+            }
+            else
+            {
+                yield return "-drain";
+            }
+        }
+
         public static IEnumerable<string> GetBaudTtyParam(int baudRate)
         {
             yield return $"{baudRate}";

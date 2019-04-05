@@ -4,8 +4,8 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using static crozone.LinuxSerialPort.Helpers.SttyParameters;
 using static crozone.LinuxSerialPort.Helpers.SttyExecution;
+using static crozone.LinuxSerialPort.Helpers.SttyParameters;
 
 namespace crozone.LinuxSerialPort
 {
@@ -29,7 +29,7 @@ namespace crozone.LinuxSerialPort
         // when the serial port is created. This value may contain wildcards,
         // and never changes.
         //
-        private string originalPortPath = null;
+        private readonly string originalPortPath = null;
 
         // The port path is the current path of the port.
         // This will usually be equal to originalPortPath, but may change
@@ -144,7 +144,7 @@ namespace crozone.LinuxSerialPort
                 {
                     // Set the raw mode
                     //
-                    SetTtyOnSerial(GetRawModeTtyParam(value));
+                    SetTtyOnSerialWithPrefix(GetRawModeTtyParam(value));
 
                     // Only set the backing field after the raw mode was set successfully.
                     //
@@ -163,6 +163,14 @@ namespace crozone.LinuxSerialPort
         }
 
         /// <summary>
+        /// Controls whether stty will attempt to flush the output buffer before applying serial configuration.
+        /// If the stty version installed supports the [-]drain option, it is recommended to set this to false
+        /// to avoid potential hangs when opening the serial port.
+        /// If stty does not support [-]drain, this should be set to null (default).
+        /// </summary>
+        public bool? EnableDrain { get; set; } = null;
+
+        /// <summary>
         /// The minimum bytes that must fill the serial read buffer before the Read command
         /// will return. (However, it may still time out and return less than this).
         /// </summary>
@@ -173,7 +181,7 @@ namespace crozone.LinuxSerialPort
             set {
                 if (IsOpen)
                 {
-                    SetTtyOnSerial(GetMinDataTtyParam(value));
+                    SetTtyOnSerialWithPrefix(GetMinDataTtyParam(value));
                 }
                 minimumBytesToRead = value;
             }
@@ -190,7 +198,7 @@ namespace crozone.LinuxSerialPort
             set {
                 if (IsOpen)
                 {
-                    SetTtyOnSerial(GetReadTimeoutTtyParam(value));
+                    SetTtyOnSerialWithPrefix(GetReadTimeoutTtyParam(value));
                 }
                 readTimeout = value;
             }
@@ -207,7 +215,7 @@ namespace crozone.LinuxSerialPort
             set {
                 if (IsOpen)
                 {
-                    SetTtyOnSerial(GetBaudTtyParam(value));
+                    SetTtyOnSerialWithPrefix(GetBaudTtyParam(value));
                 }
                 baudRate = value;
             }
@@ -224,7 +232,7 @@ namespace crozone.LinuxSerialPort
             set {
                 if (IsOpen)
                 {
-                    SetTtyOnSerial(GetDataBitsTtyParam(value));
+                    SetTtyOnSerialWithPrefix(GetDataBitsTtyParam(value));
                 }
                 dataBits = value;
             }
@@ -241,7 +249,7 @@ namespace crozone.LinuxSerialPort
             set {
                 if (IsOpen)
                 {
-                    SetTtyOnSerial(GetStopBitsTtyParam(value));
+                    SetTtyOnSerialWithPrefix(GetStopBitsTtyParam(value));
                 }
                 stopBits = value;
             }
@@ -257,7 +265,7 @@ namespace crozone.LinuxSerialPort
             set {
                 if (IsOpen)
                 {
-                    SetTtyOnSerial(GetHandshakeTtyParams(value).ToArray());
+                    SetTtyOnSerialWithPrefix(GetHandshakeTtyParams(value).ToArray());
                 }
                 handshake = value;
             }
@@ -273,7 +281,7 @@ namespace crozone.LinuxSerialPort
             set {
                 if (IsOpen)
                 {
-                    SetTtyOnSerial(GetParityTtyParams(value).ToArray());
+                    SetTtyOnSerialWithPrefix(GetParityTtyParams(value).ToArray());
                 }
                 parity = value;
             }
@@ -449,6 +457,16 @@ namespace crozone.LinuxSerialPort
         }
 
         /// <summary>
+        /// Applies stty arguments to the active serial port, including any prefix commands.
+        /// </summary>
+        /// <param name="sttyArguments"></param>
+        /// <returns></returns>
+        private string SetTtyOnSerialWithPrefix(IEnumerable<string> sttyArguments)
+        {
+            return SetTtyOnSerial(GetAllPrefixTtyParams().Concat(sttyArguments));
+        }
+
+        /// <summary>
         /// Sets serial "sane".
         /// </summary>
         private void SetSerialSane()
@@ -466,12 +484,33 @@ namespace crozone.LinuxSerialPort
         }
 
         /// <summary>
-        /// Gets the stty parameters for all currently set properties on the serial port.
+        /// Get tty parameters that should be run during every stty command.
+        /// These should be applied before all other parameters.
+        /// </summary>
+        /// <returns></returns>
+        private IEnumerable<string> GetAllPrefixTtyParams()
+        {
+            IEnumerable<string> allParams = Enumerable.Empty<string>();
+
+            // Set [-]drain parameter.
+            // Setting this to false (-drain) will prevent the port from attempting to flush the output buffer before
+            // setting any stty settings, avoiding a potential indefinite hang under certain conditions.
+            // 
+            if (EnableDrain != null)
+            {
+                allParams = allParams.Concat(GetDrainTtyParam(EnableDrain.Value));
+            }
+
+            return allParams;
+        }
+
+        /// <summary>
+        /// Gets the stty parameters for all currently set properties on the serial port, including prefix commands.
         /// </summary>
         /// <returns></returns>
         private IEnumerable<string> GetAllTtyParams()
         {
-            IEnumerable<string> allParams = Enumerable.Empty<string>();
+            IEnumerable<string> allParams = GetAllPrefixTtyParams();
 
             // Start with sane to reset any previous commands
             //
