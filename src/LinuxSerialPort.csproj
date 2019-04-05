@@ -1,22 +1,22 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <Title>LinuxSerialPort</Title>
     <RootNamespace>crozone.LinuxSerialPort</RootNamespace>
     <AssemblyName>crozone.LinuxSerialPort</AssemblyName>
-    <Description>A managed Linux Serial Port implementation targeting netstandard 2.0. Uses /bin/stty to avoid needing native code compilation and interop.</Description>
+    <Description>A managed Linux Serial Port implementation targeting netstandard 2.0. Uses /bin/stty to avoid native code compilation and interop.</Description>
     <Authors>Ryan Crosby</Authors>
     <PackageId>crozone.LinuxSerialPort</PackageId>
-    <Version>1.1.1</Version>
-    <Copyright>Copyright © Ryan Crosby 2017</Copyright>
+    <Version>1.2.0</Version>
+    <Copyright>Copyright © Ryan Crosby 2017 - 2019</Copyright>
     <PackageTags>Linux serial port stty managed NetStandard 2.0</PackageTags>
     <PackageProjectUrl>https://github.com/crozone/LinuxSerialPort</PackageProjectUrl>
     <PackageLicenseUrl>https://opensource.org/licenses/MIT</PackageLicenseUrl>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <RepositoryUrl>https://github.com/crozone/LinuxSerialPort</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageReleaseNotes>Raw mode is now enabled by default. Include XML documentation in package.</PackageReleaseNotes>
+    <PackageReleaseNotes>Modern stty [-]drain option is now exposed by the EnableDrain property. Setting EnableDrain to false can avoid a hang on serial port open.</PackageReleaseNotes>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
