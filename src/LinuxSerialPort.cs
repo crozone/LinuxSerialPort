@@ -18,6 +18,9 @@ namespace crozone.LinuxSerialPort
         // Constants
         //
 
+        /// <summary>
+        /// The value representing an infinite timout on the serial port.
+        /// </summary>
         public const int InfiniteTimeout = 0;
 
 
