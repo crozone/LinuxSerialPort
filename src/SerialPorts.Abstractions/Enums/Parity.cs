@@ -1,4 +1,4 @@
-﻿namespace crozone.LinuxSerialPort
+﻿namespace crozone.SerialPorts.Abstractions
 {
     public enum Parity
     {

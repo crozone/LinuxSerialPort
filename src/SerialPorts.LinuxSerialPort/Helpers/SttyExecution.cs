@@ -4,7 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
 
-namespace crozone.LinuxSerialPort.Helpers
+namespace crozone.SerialPorts.LinuxSerialPort.Helpers
 {
     internal static class SttyExecution
     {

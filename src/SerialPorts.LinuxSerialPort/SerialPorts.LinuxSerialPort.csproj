@@ -2,13 +2,13 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <Title>LinuxSerialPort</Title>
-    <RootNamespace>crozone.LinuxSerialPort</RootNamespace>
-    <AssemblyName>crozone.LinuxSerialPort</AssemblyName>
+    <Title>crozone.SerialPorts.LinuxSerialPort</Title>
+    <RootNamespace>crozone.SerialPorts.LinuxSerialPort</RootNamespace>
+    <AssemblyName>crozone.SerialPorts.LinuxSerialPort</AssemblyName>
     <Description>A managed Linux Serial Port implementation targeting netstandard 2.0. Uses /bin/stty to avoid native code compilation and interop.</Description>
     <Authors>Ryan Crosby</Authors>
-    <PackageId>crozone.LinuxSerialPort</PackageId>
-    <Version>1.2.0</Version>
+    <PackageId>crozone.SerialPorts.LinuxSerialPort</PackageId>
+    <Version>2.0.0</Version>
     <Copyright>Copyright © Ryan Crosby 2017 - 2019</Copyright>
     <PackageTags>Linux serial port stty managed NetStandard 2.0</PackageTags>
     <PackageProjectUrl>https://github.com/crozone/LinuxSerialPort</PackageProjectUrl>
@@ -16,7 +16,7 @@
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <RepositoryUrl>https://github.com/crozone/LinuxSerialPort</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageReleaseNotes>Modern stty [-]drain option is now exposed by the EnableDrain property. Setting EnableDrain to false can avoid a hang on serial port open.</PackageReleaseNotes>
+    <PackageReleaseNotes>Changed namespace to crozone.SerialPorts.LinuxSerialPort. Now implements ISerialPort from crozone.SerialPorts.Abstractions</PackageReleaseNotes>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -26,5 +26,9 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <DocumentationFile>bin\Release\netstandard2.0\crozone.LinuxSerialPort.xml</DocumentationFile>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="crozone.SerialPorts.Abstractions" Version="2.0.1" />
+  </ItemGroup>
 
 </Project>

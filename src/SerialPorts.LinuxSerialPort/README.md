@@ -1,6 +1,6 @@
-# LinuxSerialPort
+# crozone.SerialPorts.LinuxSerialPort
 
-[![NuGet](https://img.shields.io/badge/nuget-1.2.0-green.svg)](https://www.nuget.org/packages/crozone.LinuxSerialPort/)
+[![NuGet](https://img.shields.io/badge/nuget-2.0.0-green.svg)](https://www.nuget.org/packages/crozone.SerialPorts.LinuxSerialPort/)
 [![license](https://img.shields.io/github/license/mashape/apistatus.svg?maxAge=2592000)]()
 
 A managed Linux Serial Port implementation targeting netstandard2.0.
@@ -8,9 +8,11 @@ Works on systems that have a POSIX compatible /bin/stty binary.
 
 ## About
 
-This SerialPort class is intended to offer similar functionality to the SerialPort class provided by Microsoft in System.IO.Ports. However, although much of the interface is the same or similar, it is not intended to be a direct drop in replacement.
+This SerialPort class is intended to offer similar functionality to the `System.IO.Ports.SerialPort` class provided by Microsoft in System.IO.Ports. However, although much of the interface is the same or similar, it is not intended to be a direct drop in replacement.
 
 Most basic functionality is covered, including the configuration of the BaudRate, DataBits, StopBits, Handshake, and Parity.
+
+The class implements the shared `ISerialPort` interface from `crozone.SerialPorts.Abstractions`. This allows it to be compatible with the `crozone.SerialPorts.WindowsSerialPort` wrapper for `System.IO.Ports.SerialPort`, which makes cross-platform development easier.
 
 ## Properties
 

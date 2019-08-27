@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.0; net461</TargetFrameworks>
+    <Title>crozone.SerialPorts.WindowsSerialPort</Title>
+    <RootNamespace>crozone.SerialPorts.WindowsSerialPort</RootNamespace>
+    <AssemblyName>crozone.SerialPorts.WindowsSerialPort</AssemblyName>
+    <Description>Wrapper for System.IO.Ports.SerialPort that implements crozone.SerialPorts.Abstractions.ISerialPort</Description>
+    <Authors>Ryan Crosby</Authors>
+    <PackageId>crozone.SerialPorts.WindowsSerialPort</PackageId>
+    <Version>2.0.0</Version>
+    <Copyright>Copyright © Ryan Crosby 2017 - 2019</Copyright>
+    <PackageTags>Windows serial port wrapper ISerialPort</PackageTags>
+    <PackageProjectUrl>https://github.com/crozone/LinuxSerialPort</PackageProjectUrl>
+    <PackageLicenseUrl>https://opensource.org/licenses/MIT</PackageLicenseUrl>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <RepositoryUrl>https://github.com/crozone/LinuxSerialPort</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReleaseNotes>Initial release. Starting at version 2.0.0 to align with crozone.SerialPorts.LinuxSerialPort version number.</PackageReleaseNotes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.IO.Ports" Version="4.5.0" />
+    <PackageReference Include="crozone.SerialPorts.Abstractions" Version="2.0.1" />
+  </ItemGroup>
+</Project>

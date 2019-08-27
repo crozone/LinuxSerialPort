@@ -1,18 +1,19 @@
-﻿using System;
+﻿using crozone.SerialPorts.Abstractions;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using static crozone.LinuxSerialPort.Helpers.SttyExecution;
-using static crozone.LinuxSerialPort.Helpers.SttyParameters;
+using static crozone.SerialPorts.LinuxSerialPort.Helpers.SttyExecution;
+using static crozone.SerialPorts.LinuxSerialPort.Helpers.SttyParameters;
 
-namespace crozone.LinuxSerialPort
+namespace crozone.SerialPorts.LinuxSerialPort
 {
     /// <summary>
     /// A serial port implementation for POSIX style systems that have /bin/stty available.
     /// </summary>
-    public class LinuxSerialPort : IDisposable
+    public class LinuxSerialPort : IDisposable, ISerialPort
     {
         //
         // Constants

@@ -1,7 +1,8 @@
-﻿using System;
+﻿using crozone.SerialPorts.Abstractions;
+using System;
 using System.Collections.Generic;
 
-namespace crozone.LinuxSerialPort.Helpers
+namespace crozone.SerialPorts.LinuxSerialPort.Helpers
 {
     internal static class SttyParameters
     {

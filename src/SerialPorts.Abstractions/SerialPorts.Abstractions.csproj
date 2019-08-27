@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.0; net461</TargetFrameworks>
+    <Title>crozone.SerialPorts.Abstractions</Title>
+    <RootNamespace>crozone.SerialPorts.Abstractions</RootNamespace>
+    <AssemblyName>crozone.SerialPorts.Abstractions</AssemblyName>
+    <Description>Common abstractions for cross-platform serial ports</Description>
+    <Authors>Ryan Crosby</Authors>
+    <PackageId>crozone.SerialPorts.Abstractions</PackageId>
+    <Version>2.0.1</Version>
+    <Copyright>Copyright © Ryan Crosby 2017 - 2019</Copyright>
+    <PackageTags>serial port cross platform abstractions</PackageTags>
+    <PackageProjectUrl>https://github.com/crozone/LinuxSerialPort</PackageProjectUrl>
+    <PackageLicenseUrl>https://opensource.org/licenses/MIT</PackageLicenseUrl>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <RepositoryUrl>https://github.com/crozone/LinuxSerialPort</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReleaseNotes>Changed .NET verison to 4.61 to align with Windows Serial Port</PackageReleaseNotes>
+  </PropertyGroup>
+</Project>
