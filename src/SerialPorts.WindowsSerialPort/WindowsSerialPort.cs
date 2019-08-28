@@ -16,6 +16,11 @@ namespace crozone.SerialPorts.WindowsSerialPort
     /// </summary>
     public class WindowsSerialPort : ISerialPort
     {
+        /// <summary>
+        /// The value representing an infinite timout on the serial port.
+        /// </summary>
+        public const int InfiniteTimeout = SerialPort.InfiniteTimeout;
+
         private SerialPort serialPort;
 
         public WindowsSerialPort(SerialPort serialPort)
