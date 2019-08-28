@@ -1,0 +1,13 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp2.2</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="crozone.SerialPorts.LinuxSerialPort" Version="2.0.2" />
+    <PackageReference Include="crozone.SerialPorts.WindowsSerialPort" Version="2.0.2" />
+  </ItemGroup>
+
+</Project>
