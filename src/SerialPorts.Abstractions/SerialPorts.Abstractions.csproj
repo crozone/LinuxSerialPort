@@ -7,7 +7,7 @@
     <Description>Common abstractions for cross-platform serial ports</Description>
     <Authors>Ryan Crosby</Authors>
     <PackageId>crozone.SerialPorts.Abstractions</PackageId>
-    <Version>2.0.1</Version>
+    <Version>2.0.3</Version>
     <Copyright>Copyright © Ryan Crosby 2017 - 2019</Copyright>
     <PackageTags>serial port cross platform abstractions</PackageTags>
     <PackageProjectUrl>https://github.com/crozone/LinuxSerialPort</PackageProjectUrl>
@@ -15,6 +15,6 @@
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <RepositoryUrl>https://github.com/crozone/LinuxSerialPort</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageReleaseNotes>Changed .NET verison to 4.61 to align with Windows Serial Port</PackageReleaseNotes>
+    <PackageReleaseNotes>Fix Dispose method hiding inherited IDisposable method</PackageReleaseNotes>
   </PropertyGroup>
 </Project>
