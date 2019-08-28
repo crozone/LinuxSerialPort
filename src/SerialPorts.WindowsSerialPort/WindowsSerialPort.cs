@@ -36,7 +36,7 @@ namespace crozone.SerialPorts.WindowsSerialPort
 
         public bool IsOpen => serialPort.IsOpen;
 
-        public Parity Parity { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        public Parity Parity { get => (Parity)serialPort.Parity; set => serialPort.Parity = (System.IO.Ports.Parity)serialPort.Parity; }
 
         public string PortName => serialPort.PortName;
 
