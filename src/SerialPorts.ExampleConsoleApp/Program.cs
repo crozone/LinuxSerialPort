@@ -20,7 +20,15 @@ namespace SerialPorts.ExampleConsoleApp
                 // Open the serial port now.
                 //
                 Console.WriteLine($"Opening port {serialPort.PortName}...");
-                serialPort.Open();
+                try
+                {
+                    serialPort.Open();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Could not open serial port: {ex.Message}");
+                    return;
+                }
 
                 // Get the base stream for reading and writing
                 //
