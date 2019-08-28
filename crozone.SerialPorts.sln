@@ -9,7 +9,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SerialPorts.WindowsSerialPo
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SerialPorts.Abstractions", "src\SerialPorts.Abstractions\SerialPorts.Abstractions.csproj", "{3DD8B4E8-69D1-4DD5-9C5A-1B4B5EBFEF0F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SerialPorts.ExampleConsoleApp", "SerialPorts.ExampleConsoleApp\SerialPorts.ExampleConsoleApp.csproj", "{B6D9CA3A-21AD-4180-A13D-736796E86775}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SerialPorts.ExampleConsoleApp", "src\SerialPorts.ExampleConsoleApp\SerialPorts.ExampleConsoleApp.csproj", "{B6D9CA3A-21AD-4180-A13D-736796E86775}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
