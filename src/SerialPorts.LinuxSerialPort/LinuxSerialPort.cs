@@ -24,7 +24,6 @@ namespace crozone.SerialPorts.LinuxSerialPort
         /// </summary>
         public const int InfiniteTimeout = 0;
 
-
         //
         // Private fields
         //
