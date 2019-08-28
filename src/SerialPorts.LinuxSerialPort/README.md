@@ -4,11 +4,11 @@
 [![license](https://img.shields.io/github/license/mashape/apistatus.svg?maxAge=2592000)]()
 
 A managed Linux Serial Port implementation targeting netstandard2.0.
-Works on systems that have a POSIX compatible /bin/stty binary.
+This implementation performs all serial port setup by calling the `/bin/stty` binary, rather than relying on any native interop directly. This means it should work on any system that has a POSIX compatible /bin/stty binary.
 
 ## About
 
-This SerialPort class is intended to offer similar functionality to the `System.IO.Ports.SerialPort` class provided by Microsoft in System.IO.Ports. However, although much of the interface is the same or similar, it is not intended to be a direct drop in replacement.
+This SerialPort class is intended to offer similar functionality to the `System.IO.Ports.SerialPort` class provided by Microsoft. However, although much of the interface is the same or similar, it is not intended to be a direct drop in replacement.
 
 Most basic functionality is covered, including the configuration of the BaudRate, DataBits, StopBits, Handshake, and Parity.
 
@@ -22,13 +22,16 @@ The `SerialPort.BaseStream` property provides the underlying Stream used to read
 
 `SerialPort.MinimumBytesToRead` and `SerialPort.ReadTimeout` allow the blocking behaviour of `BaseStream.Read()` to be modified.
 
-`SerialPort.MinimumBytesToRead` corresponds to the stty min parameter. MinimumBytesToRead specifies the minimum number of bytes to be read before `BaseStream.Read()` will return. `BaseStream.Read()` will only return after `MinimumBytesToRead` bytes have been read, or the read has timed out. Setting `MinimumBytesToRead` to 0 will cause `BaseStream.Read()` to never block, and instantly return whatever bytes are available in the buffer, even if the buffer is empty.
+`SerialPort.MinimumBytesToRead` corresponds to the stty min parameter. `MinimumBytesToRead` specifies the minimum number of bytes to be read before `BaseStream.Read()` will return. `BaseStream.Read()` will only return after `MinimumBytesToRead` bytes have been read, or the timeout has been reached. Setting `MinimumBytesToRead` to 0 will cause `BaseStream.Read()` to never block, and instantly return whatever bytes are available in the buffer, even if the buffer is empty.
 
-`SerialPort.ReadTimeout` corresponds to the stty time parameter. `ReadTimeout` specifies the number of milliseconds a `BaseStream.Read()` will block for, before it times out. After it times out, it will return whatever data has been read, which may be zero bytes. Due to stty constraints, the time-span will be rounded to the nearest tenth of a second. A ReadTimeout of 0 specifies an infinite timeout. When an infinite timeout is set, the `BaseStream.Read()` will only return after `MinimumBytesToRead` bytes have been read.
+`SerialPort.ReadTimeout` corresponds to the stty time parameter. `ReadTimeout` specifies the number of milliseconds a `BaseStream.Read()` will block for, before it times out. After it times out, it will return whatever data has been read, which may be zero bytes. Due to stty constraints, the time-span will be rounded to the nearest tenth of a second (100ms resolution). A ReadTimeout of 0 specifies an infinite timeout. When an infinite timeout is set, the `BaseStream.Read()` will only return after `MinimumBytesToRead` bytes have been read.
 
-`SerialPort.EnableDrain` controls the use of the stty [-]drain setting. When drain is enabled, stty will attempt to flush the serial port write buffer before applying any configuration to the serial port.
-This is problematic if the serial port happens to have data in the write buffer and flow control enabled, since it may never flush, causing stty to hang indefinitely.
-Therefore, if [-]drain is available in your version of stty, it is always recommended to set `SerialPort.EnableDrain = false`. [-]drain is not a POSIX compatible command, and older/different versions of stty may not have it available, so be sure to check before setting this. All versions of stty use drain enabled behaviour by default, including the stty versions that to not have the option available.
+`SerialPort.EnableDrain` controls the use of the stty [-]drain setting. If drain is **enabled (true)**, stty will attempt to flush the serial port write buffer before applying any configuration to the serial port.
+This is problematic if the serial port has data in the write buffer and flow control is enabled, since the buffer may never flush, causing stty to hang indefinitely.
+
+**If your code is hanging during `LinuxSerialPort.Open()`, this is likely the bug you are seeing.**
+
+To fix this, set `SerialPort.EnableDrain = false`. This is only possible if [-]drain is available in your version of stty. [-]drain is not a POSIX compatible command, and older/different versions of stty may not have it available, so be sure to check before setting this. All versions of stty use drain enabled behaviour by default, including the stty versions that to not have the option available.
 
 ## Example Code
 
@@ -120,14 +123,14 @@ using (LinuxSerialPort serialPort = new LinuxSerialPort("/dev/ttyUSB*")
             // If we received no data during the Thread.Sleep, assume we have reached the end
             // of the packet being sent to us.
             //
-            if (bytesRead <= 0)
+            if (bytesReceived <= 0)
             {
                 break;
             }
             
             // Check if we have run out of read buffer.
             //
-            if(totalBytesRead >= readBuffer.Length) {
+            if(totalBytesReceived >= readBuffer.Length) {
                 // Use what we have.
                 //
                 break;
