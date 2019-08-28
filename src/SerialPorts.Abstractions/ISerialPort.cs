@@ -1,10 +1,11 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace crozone.SerialPorts.Abstractions
 {
-    public interface ISerialPort
+    public interface ISerialPort : IDisposable
     {
         Stream BaseStream { get; }
         int BaudRate { get; set; }
@@ -21,7 +22,6 @@ namespace crozone.SerialPorts.Abstractions
         Task DiscardInBufferAsync(CancellationToken token);
         void DiscardOutBuffer();
         Task DiscardOutBufferAsync(CancellationToken token);
-        void Dispose();
         void Open();
         string ToString();
     }
