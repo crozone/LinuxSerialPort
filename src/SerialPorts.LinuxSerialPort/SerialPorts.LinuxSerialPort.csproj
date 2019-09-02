@@ -8,7 +8,7 @@
     <Description>A managed Linux Serial Port implementation targeting netstandard 2.0. Uses /bin/stty to avoid native code compilation and interop.</Description>
     <Authors>Ryan Crosby</Authors>
     <PackageId>crozone.SerialPorts.LinuxSerialPort</PackageId>
-    <Version>2.0.2</Version>
+    <Version>2.0.3</Version>
     <Copyright>Copyright © Ryan Crosby 2017 - 2019</Copyright>
     <PackageTags>Linux serial port stty managed NetStandard 2.0</PackageTags>
     <PackageProjectUrl>https://github.com/crozone/LinuxSerialPort</PackageProjectUrl>
