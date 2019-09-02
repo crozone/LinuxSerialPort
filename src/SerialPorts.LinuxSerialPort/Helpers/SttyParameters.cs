@@ -50,9 +50,9 @@ namespace crozone.SerialPorts.LinuxSerialPort.Helpers
                 //
                 yield return "-hupcl";
 
-                // Disable modem control signals
+                // Disable modem control signals (in the negative sense. -clocal actually enables modem control signals).
                 //
-                yield return "-clocal";
+                yield return "clocal";
 
                 // Don't enable non-POSIX special characters
                 //
