@@ -1,6 +1,6 @@
 # crozone.SerialPorts.LinuxSerialPort
 
-[![NuGet](https://img.shields.io/badge/nuget-2.0.2-green.svg)](https://www.nuget.org/packages/crozone.SerialPorts.LinuxSerialPort/)
+[![NuGet](https://img.shields.io/badge/nuget-2.0.3-green.svg)](https://www.nuget.org/packages/crozone.SerialPorts.LinuxSerialPort/)
 [![license](https://img.shields.io/github/license/mashape/apistatus.svg?maxAge=2592000)]()
 
 A managed Linux Serial Port implementation targeting netstandard2.0.
